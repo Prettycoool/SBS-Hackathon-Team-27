@@ -82,6 +82,9 @@ brew install libomp
 
 # Python dependencies
 pip install xgboost shap scikit-learn pandas numpy matplotlib seaborn openpyxl
+
+# Windows:
+pip install xgboost shap scikit-learn pandas numpy matplotlib seaborn openpyxl
 ```
 
 ---
