@@ -46,9 +46,9 @@ export default function GaugeChart({ value }) {
   const v = Math.max(0, Math.min(1, value ?? 0));
 
   const accentColor =
-    v < 0.35 ? '#1E8449' :
-    v < 0.65 ? '#D68910' :
-               '#B03A2E';
+    v < 0.35 ? '#4ade80' :
+    v < 0.65 ? '#fbbf24' :
+               '#f87171';
 
   const riskLabel =
     v < 0.35 ? 'Low Risk' :
@@ -93,7 +93,8 @@ export default function GaugeChart({ value }) {
           <line key={tick}
             x1={inner.x.toFixed(1)} y1={inner.y.toFixed(1)}
             x2={outer.x.toFixed(1)} y2={outer.y.toFixed(1)}
-            stroke="white" strokeWidth={2.5} strokeLinecap="round"
+            style={{ stroke: 'var(--gauge-divider)' }}
+            strokeWidth={2.5} strokeLinecap="round"
           />
         );
       })}
@@ -104,13 +105,14 @@ export default function GaugeChart({ value }) {
         <line
           x1={CX - NEEDLE_LEN} y1={CY}
           x2={CX - 8}          y2={CY}
-          stroke="#1A252F" strokeWidth={3.5} strokeLinecap="round"
+          style={{ stroke: 'var(--gauge-needle)' }}
+          strokeWidth={3.5} strokeLinecap="round"
         />
       </g>
 
       {/* ── 4. Hub (drawn last so it sits on top of needle base) ─────────── */}
-      <circle cx={CX} cy={CY} r={8}   fill="#1A252F" />
-      <circle cx={CX} cy={CY} r={4.5} fill="white"   />
+      <circle cx={CX} cy={CY} r={8}   style={{ fill: 'var(--gauge-hub-ring)' }} />
+      <circle cx={CX} cy={CY} r={4.5} style={{ fill: 'var(--gauge-hub-dot)'  }} />
 
       {/* ── 5. "Low" / "High" labels anchored to arc endpoints ───────────── */}
       <text
@@ -141,7 +143,8 @@ export default function GaugeChart({ value }) {
       <text
         x={CX} y={CY + 46}
         textAnchor="middle" fontSize={11}
-        fill="#5D6D7E" fontFamily="Inter, sans-serif"
+        style={{ fill: 'var(--gauge-sublabel)' }}
+        fontFamily="Inter, sans-serif"
       >
         {riskLabel}
       </text>

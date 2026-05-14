@@ -1,6 +1,59 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PatientForm  from './components/PatientForm.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
+
+const THEME_KEY = 'diana-theme';
+
+function DianaLogo() {
+  return (
+    <svg
+      className="header-logo-svg"
+      width="50" height="50"
+      viewBox="0 0 50 50"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* Outer ring */}
+      <circle cx="25" cy="25" r="23" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.30)" strokeWidth="1.5"/>
+      {/* Inner subtle fill for depth */}
+      <circle cx="25" cy="25" r="19" fill="rgba(255,255,255,0.05)"/>
+      {/* Venus / female symbol — circle */}
+      <circle cx="25" cy="18" r="9" stroke="white" strokeWidth="2.2" fill="none"/>
+      {/* Stem */}
+      <line x1="25" y1="27" x2="25" y2="39" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+      {/* Crossbar */}
+      <line x1="19.5" y1="33" x2="30.5" y2="33" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+const SECTIONS = [
+  { id: 'section-demographics', label: 'Demographics' },
+  { id: 'section-menstrual',    label: 'Menstrual'    },
+  { id: 'section-hormonal',     label: 'Hormonal'     },
+  { id: 'section-ultrasound',   label: 'Ultrasound'   },
+  { id: 'section-symptoms',     label: 'Symptoms'     },
+  { id: 'section-vitals',       label: 'Vitals'       },
+];
+
+function SectionProgress({ activeSection, onNavigate }) {
+  return (
+    <div className="section-progress">
+      {SECTIONS.map((s, i) => (
+        <span key={s.id} style={{ display: 'contents' }}>
+          <button
+            className={`progress-step ${activeSection === s.id ? 'active' : ''}`}
+            onClick={() => onNavigate(s.id)}
+          >
+            {s.label}
+          </button>
+          {i < SECTIONS.length - 1 && <span className="progress-sep">›</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 const API_URL = 'http://localhost:8000/diagnose';
 
@@ -30,11 +83,63 @@ const DEFAULTS = {
 };
 
 export default function App() {
-  const [form,    setForm]    = useState(DEFAULTS);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
-  const resultsRef = useRef(null);
+  const [form,          setForm]          = useState(DEFAULTS);
+  const [results,       setResults]       = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [activeSection, setActiveSection] = useState('section-demographics');
+  const [isDark,        setIsDark]        = useState(
+    () => localStorage.getItem(THEME_KEY) !== 'light'
+  );
+  const [iconFlipping,  setIconFlipping]  = useState(false);
+  const resultsRef      = useRef(null);
+  const isScrollingRef  = useRef(false);
+
+  const navigateToSection = (id) => {
+    const el  = document.getElementById(id);
+    const bar = document.querySelector('.section-progress');
+    if (!el) return;
+    const offset = (bar?.offsetHeight ?? 44) + 16;
+    const top    = el.getBoundingClientRect().top + window.scrollY - offset;
+    isScrollingRef.current = true;
+    setActiveSection(id);
+    window.scrollTo({ top, behavior: 'smooth' });
+    // Clear the gate once the browser signals the scroll is done.
+    // scrollend is supported in Chrome 114+, FF 109+, Safari 16.2+;
+    // the timeout is a fallback for older browsers.
+    const done = () => { isScrollingRef.current = false; };
+    window.addEventListener('scrollend', done, { once: true });
+    setTimeout(done, 800);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => {
+    if (iconFlipping) return;
+    setIconFlipping(true);
+    setTimeout(() => setIsDark(d => !d), 210);
+    setTimeout(() => setIconFlipping(false), 440);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isScrollingRef.current) return;
+      const ids = SECTIONS.map(s => s.id);
+      for (let i = ids.length - 1; i >= 0; i--) {
+        const el = document.getElementById(ids[i]);
+        if (el && el.getBoundingClientRect().top <= 120) {
+          setActiveSection(ids[i]);
+          return;
+        }
+      }
+      setActiveSection(ids[0]);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleChange = (name, value) => {
     setForm(prev => ({ ...prev, [name]: value }));
@@ -70,10 +175,23 @@ export default function App() {
 
       {/* Header */}
       <header className="app-header">
-        <div className="app-header-icon">🧬</div>
+        <DianaLogo />
         <div>
           <h1>DIANA</h1>
           <p>Intelligent differential diagnosis for women's reproductive health</p>
+        </div>
+        <div className="header-right">
+          <span className="header-version">v1.0 · SBS Hackathon 2026</span>
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            <span className={`theme-icon${iconFlipping ? ' flipping' : ''}`}>
+              {isDark ? '🌙' : '☀️'}
+            </span>
+            {isDark ? 'Dark' : 'Light'}
+          </button>
         </div>
       </header>
 
@@ -81,6 +199,9 @@ export default function App() {
       <div className="app-disclaimer">
         ⚠ For research and educational use only. Not a substitute for clinical diagnosis by a qualified physician.
       </div>
+
+      {/* Section progress */}
+      <SectionProgress activeSection={activeSection} onNavigate={navigateToSection} />
 
       {/* Two-panel layout */}
       <main className="app-body">

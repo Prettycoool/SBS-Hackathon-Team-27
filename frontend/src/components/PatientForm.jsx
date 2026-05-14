@@ -7,6 +7,7 @@
 function Slider({ name, label, value, onChange, min, max, step, unit, refRange }) {
   const decimals = step < 1 ? 1 : 0;
   const display  = typeof value === 'number' ? value.toFixed(decimals) : value;
+  const pct      = `${((value - min) / (max - min)) * 100}%`;
 
   return (
     <div className="field">
@@ -17,6 +18,7 @@ function Slider({ name, label, value, onChange, min, max, step, unit, refRange }
       {refRange && <div className="field-ref">Ref: {refRange}</div>}
       <input
         type="range"
+        style={{ '--pct': pct }}
         min={min} max={max} step={step} value={value}
         onChange={e => onChange(name, parseFloat(e.target.value))}
       />
@@ -54,7 +56,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
     <div className="form-panel">
 
       {/* ── Demographics ──────────────────────────────────────────────────── */}
-      <div className="card border-blue">
+      <div id="section-demographics" className="card border-blue">
         <div className="card-body">
           <div className="section-title">Demographics</div>
           <div className="form-grid">
@@ -67,7 +69,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
       </div>
 
       {/* ── Menstrual history ─────────────────────────────────────────────── */}
-      <div className="card border-purple">
+      <div id="section-menstrual" className="card border-purple">
         <div className="card-body">
           <div className="section-title">Menstrual History</div>
           <div className="form-grid">
@@ -82,7 +84,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
       </div>
 
       {/* ── Hormonal markers ──────────────────────────────────────────────── */}
-      <div className="card border-teal">
+      <div id="section-hormonal" className="card border-teal">
         <div className="card-body">
           <div className="section-title">Hormonal Markers</div>
           <div className="form-grid">
@@ -101,7 +103,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
       </div>
 
       {/* ── Ultrasound ────────────────────────────────────────────────────── */}
-      <div className="card border-indigo">
+      <div id="section-ultrasound" className="card border-indigo">
         <div className="card-body">
           <div className="section-title">Ultrasound Findings</div>
           <div className="form-grid">
@@ -122,7 +124,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
       </div>
 
       {/* ── Clinical symptoms ─────────────────────────────────────────────── */}
-      <div className="card border-rose">
+      <div id="section-symptoms" className="card border-rose">
         <div className="card-body">
           <div className="section-title">Clinical Symptoms</div>
           <div className="form-grid">
@@ -141,7 +143,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
       </div>
 
       {/* ── Vitals ────────────────────────────────────────────────────────── */}
-      <div className="card border-orange">
+      <div id="section-vitals" className="card border-orange">
         <div className="card-body">
           <div className="section-title">Vitals</div>
           <div className="form-grid">

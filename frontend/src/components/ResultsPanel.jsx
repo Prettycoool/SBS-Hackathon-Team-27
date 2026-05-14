@@ -254,7 +254,7 @@ export default function ResultsPanel({ results, loading, error, form }) {
   return (
     <>
       {/* ── [3] Primary diagnosis + gauge ──────────────────────────────── */}
-      <div className="card">
+      <div className={`card${pcos_prediction && !inconclusive ? ' pcos-positive' : ''}`}>
         <div className="card-header">
           <h2>Diagnostic Result</h2>
         </div>
