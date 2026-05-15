@@ -1,0 +1,9 @@
+scanpy
+anndata
+matplotlib
+seaborn
+pandas
+numpy
+jupyter
+scikit-learn
+scipy

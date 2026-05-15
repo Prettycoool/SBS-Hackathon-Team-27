@@ -1,0 +1,10 @@
+.venv/
+*.tar
+*.tar.gz
+*.h5ad
+*.mtx
+scrna_data/
+cache/
+__pycache__/
+.ipynb_checkpoints/
+*.gz
