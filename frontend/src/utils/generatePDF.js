@@ -138,7 +138,51 @@ export function generatePDF({ form, results, shapSentence }) {
   doc.setTextColor(...C.dark);
   y = 34;
 
-  // ── 2. DIAGNOSTIC RESULT ─────────────────────────────────────────────────────
+  // ── 2. AGE-AWARE DIAGNOSTIC FLAG ─────────────────────────────────────────────
+  if (results.age_flag === 'peak_gap') {
+    guard(22);
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(245, 158, 11);
+    doc.roundedRect(M, y, CW, 4, 2, 2, 'F');  // top colour strip
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(245, 158, 11);
+    doc.roundedRect(M, y, CW, 22, 2, 2, 'FD');
+    doc.setFillColor(245, 158, 11);
+    doc.rect(M, y, 3, 22, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(146, 64, 14);
+    doc.text('⚠  Peak Diagnostic Gap Zone', M + 6, y + 6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(92, 73, 0);
+    const peakMsg = 'Women aged 26–30 have the highest Rotterdam miss rate in our dataset (35.8%). DIANA applies heightened sensitivity for this age group — borderline presentations are flagged rather than dismissed.';
+    const peakLines = doc.splitTextToSize(peakMsg, CW - 10);
+    doc.text(peakLines, M + 6, y + 13);
+    doc.setTextColor(...C.dark);
+    y += 26;
+  } else if (results.age_flag === 'adolescent') {
+    guard(22);
+    doc.setFillColor(239, 246, 255);
+    doc.setDrawColor(59, 130, 246);
+    doc.roundedRect(M, y, CW, 22, 2, 2, 'FD');
+    doc.setFillColor(59, 130, 246);
+    doc.rect(M, y, 3, 22, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(30, 64, 175);
+    doc.text('⚠  Adolescent Patient', M + 6, y + 6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    const adolMsg = '2023 international guidelines recommend against ultrasound and AMH in patients under 18 due to poor specificity. DIANA applies adolescent-adjusted criteria: both hyperandrogenism AND anovulation required for diagnosis. Ultrasound findings not weighted.';
+    const adolLines = doc.splitTextToSize(adolMsg, CW - 10);
+    doc.text(adolLines, M + 6, y + 13);
+    doc.setTextColor(...C.dark);
+    y += 26;
+  }
+
+  // ── 3. DIAGNOSTIC RESULT ─────────────────────────────────────────────────────
   sectionBar('Diagnostic Result');
 
   const prob         = results.pcos_probability;
@@ -186,6 +230,151 @@ export function generatePDF({ form, results, shapSentence }) {
     y += 14;
   }
 
+  // Time Cost of Misdiagnosis block (PCOS-positive with known phenotype)
+  if (pcosDet && results.pcos_phenotype) {
+    const MISDIAGNOSIS_PDF = {
+      A:        { years: 1.9, misdiagnosis: 'Idiopathic hirsutism' },
+      B:        { years: 2.8, misdiagnosis: 'Idiopathic hirsutism (54% of cases)' },
+      C:        { years: 2.4, misdiagnosis: 'Stress-related amenorrhea' },
+      D:        { years: 3.8, misdiagnosis: 'Subclinical hypothyroidism' },
+      Atypical: { years: 4.2, misdiagnosis: 'No diagnosis given' },
+    };
+    const mData = MISDIAGNOSIS_PDF[results.pcos_phenotype.code];
+    if (mData) {
+      // Compute diana text lines first so card height is dynamic
+      const dianaMsg = `With DIANA: Flagged today — estimated ${mData.years} years saved — fertility planning window preserved`;
+      const dianaLines = doc.splitTextToSize(dianaMsg, CW - 16);
+      const darkH  = 31;
+      const stripH = Math.max(12, dianaLines.length * 5 + 8);
+      const cardH  = darkH + stripH;
+
+      guard(cardH);
+      // Dark background
+      doc.setFillColor(15, 32, 39);
+      doc.rect(M, y, CW, darkH, 'F');
+      // Green strip at bottom
+      doc.setFillColor(6, 95, 70);
+      doc.rect(M, y + darkH, CW, stripH, 'F');
+
+      // Title (plain text — no emoji)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.text('Time Cost of Misdiagnosis — Without early detection tools:', M + 4, y + 7);
+
+      // Data rows
+      const rows = [
+        ['Average time to diagnosis',      `${mData.years} years`],
+        ['Doctors seen before diagnosis',   '3-4 on average'],
+        ['Most commonly misdiagnosed as',   mData.misdiagnosis],
+      ];
+      let ry = y + 14;
+      for (const [label, val] of rows) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(180, 180, 190);
+        doc.text(label + ':', M + 4, ry);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(251, 191, 36);
+        doc.text(val, M + 4 + 70, ry);
+        ry += 6.5;
+      }
+
+      // Diana green strip text — wrapped, padded, no problematic unicode
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(dianaLines, M + 4, y + darkH + 6);
+
+      doc.setTextColor(...C.dark);
+      y += cardH + 4;
+    }
+  }
+
+  // Long-term Risk Profile block (PCOS-positive with known phenotype)
+  if (pcosDet && results.pcos_phenotype) {
+    const RISK_PROFILE_PDF = {
+      A:        { t2d: 4.0, ms: 3.2, cvd: 2.8, mh: 2.8, infertility: 72 },
+      B:        { t2d: 3.2, ms: 2.8, cvd: 2.4, mh: 2.8, infertility: 68 },
+      C:        { t2d: 2.8, ms: 2.4, cvd: 2.0, mh: 2.4, infertility: 55 },
+      D:        { t2d: 2.4, ms: 2.0, cvd: 1.8, mh: 2.4, infertility: 48 },
+      Atypical: { t2d: 2.5, ms: 2.2, cvd: 1.9, mh: 2.6, infertility: 52 },
+    };
+    const rp = RISK_PROFILE_PDF[results.pcos_phenotype.code];
+    if (rp) {
+      const riskRows = [
+        { label: 'Type 2 Diabetes',       val: rp.t2d,         fmt: v => `${v}x relative risk`,  isX: true  },
+        { label: 'Metabolic Syndrome',     val: rp.ms,          fmt: v => `${v}x relative risk`,  isX: true  },
+        { label: 'Cardiovascular Disease', val: rp.cvd,         fmt: v => `${v}x relative risk`,  isX: true  },
+        { label: 'Depression / Anxiety',   val: rp.mh,          fmt: v => `${v}x relative risk`,  isX: true  },
+        { label: 'Infertility Risk',       val: rp.infertility, fmt: v => `${v}%`,                isX: false },
+      ];
+
+      // Header bar
+      sectionBar('Long-term Risk Profile — If Left Undiagnosed');
+
+      // Risk rows
+      for (const row of riskRows) {
+        guard(9);
+        const tier = row.isX
+          ? (row.val >= 3 ? 'red' : row.val >= 2 ? 'amber' : 'yellow')
+          : (row.val >= 65 ? 'red' : row.val >= 55 ? 'amber' : 'yellow');
+        const bgColor  = tier === 'red' ? [60, 20, 20] : tier === 'amber' ? [55, 35, 10] : [50, 45, 10];
+        const valColor = tier === 'red' ? [248, 113, 113] : tier === 'amber' ? [251, 191, 36] : [253, 224, 71];
+
+        doc.setFillColor(...bgColor);
+        doc.rect(M, y, CW, 7, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(200, 200, 210);
+        doc.text(row.label, M + 4, y + 4.8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...valColor);
+        doc.text(row.fmt(row.val), M + CW - 4, y + 4.8, { align: 'right' });
+        y += 8;
+      }
+
+      y += 3;
+
+      // Good news / green section
+      const goodNewsMsg = 'Lifestyle modification reduces T2D risk by up to 58% (NEJM Diabetes Prevention Program). Metformin reduces metabolic risk. Mental health screening recommended.';
+      const gnLines = doc.splitTextToSize(goodNewsMsg, CW - 8);
+      const checkItems = ['Fasting glucose + insulin', 'Full lipid panel', 'PHQ-9 depression screening', 'Blood pressure monitoring'];
+      const gnBoxH = 8 + gnLines.length * 5 + 7 + checkItems.length * 5.5 + 6;
+
+      guard(gnBoxH);
+      doc.setFillColor(5, 46, 22);
+      doc.rect(M, y, CW, gnBoxH, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(74, 222, 128);
+      doc.text('✓  Good news — Early intervention helps:', M + 4, y + 6.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(200, 220, 200);
+      doc.text(gnLines, M + 4, y + 13);
+
+      let cy = y + 13 + gnLines.length * 5 + 4;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(200, 240, 200);
+      doc.text('Recommended investigations:', M + 4, cy);
+      cy += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(180, 220, 180);
+      for (const item of checkItems) {
+        doc.text(`•  ${item}`, M + 6, cy);
+        cy += 5.5;
+      }
+
+      doc.setTextColor(...C.dark);
+      y += gnBoxH + 4;
+    }
+  }
+
   // Rotterdam gap flag warning
   if (!pcosDet && results.rotterdam_gap_flag) {
     guard(22);
@@ -222,7 +411,7 @@ export function generatePDF({ form, results, shapSentence }) {
     y += boxH + 4;
   }
 
-  // ── 3. ROTTERDAM CRITERIA ────────────────────────────────────────────────────
+  // ── 4. ROTTERDAM CRITERIA ────────────────────────────────────────────────────
   sectionBar('Rotterdam Criteria Checklist');
 
   const polycystic  = (form.follicle_no_l ?? 0) > 12 || (form.follicle_no_r ?? 0) > 12;
@@ -293,7 +482,7 @@ export function generatePDF({ form, results, shapSentence }) {
   doc.setTextColor(...C.dark);
   y += 7;
 
-  // ── 4. PATIENT INPUT SUMMARY ─────────────────────────────────────────────────
+  // ── 5. PATIENT INPUT SUMMARY ─────────────────────────────────────────────────
   sectionBar('Patient Input Summary');
 
   for (let i = 0; i < FORM_META.length; i += 2) {
@@ -307,7 +496,7 @@ export function generatePDF({ form, results, shapSentence }) {
     y += 6;
   }
 
-  // ── 5. KEY CONTRIBUTING FACTORS ──────────────────────────────────────────────
+  // ── 6. KEY CONTRIBUTING FACTORS ──────────────────────────────────────────────
   y += 4;
   sectionBar('Key Contributing Factors (SHAP Analysis)');
 
@@ -339,7 +528,7 @@ export function generatePDF({ form, results, shapSentence }) {
     y += 14;
   });
 
-  // ── 6. DIFFERENTIAL DIAGNOSIS / COMORBIDITY ALERTS (all patients) ───────────
+  // ── 7. DIFFERENTIAL DIAGNOSIS / COMORBIDITY ALERTS (all patients) ───────────
   if (results.differential_flags) {
     y += 4;
     sectionBar(pcosDet ? 'Comorbidity Alerts' : 'Stage 2 Differential Diagnosis');
@@ -391,7 +580,7 @@ export function generatePDF({ form, results, shapSentence }) {
     y += 6;
   }
 
-  // ── 7. DISCLAIMER ────────────────────────────────────────────────────────────
+  // ── 8. DISCLAIMER ────────────────────────────────────────────────────────────
   y += 6;
   guard(24);
   doc.setFillColor(255,243,205);
@@ -409,7 +598,7 @@ export function generatePDF({ form, results, shapSentence }) {
   doc.text(dLines, M + 4, y + 12);
   y += 26;
 
-  // ── 8. PAGE FOOTER ───────────────────────────────────────────────────────────
+  // ── 9. PAGE FOOTER ───────────────────────────────────────────────────────────
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);

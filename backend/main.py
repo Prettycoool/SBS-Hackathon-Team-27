@@ -183,6 +183,7 @@ class DiagnosisResponse(BaseModel):
     primary_diagnosis:   str
     pcos_phenotype:      Optional[PhenotypeInfo] = None
     rotterdam_gap_flag:  bool = False
+    age_flag:            str = ""   # "peak_gap" | "adolescent" | ""
     differential_flags:  Optional[DifferentialFlags] = None
     shap_explanations:   list[ShapEntry]
 
@@ -384,6 +385,15 @@ async def diagnose(patient: PatientData):
     # ── Rotterdam gap flag: Not-PCOS with exactly 1 criterion met ─────────────
     rotterdam_gap = (not pcos_pred) and (rotterdam_met == 1)
 
+    # ── Age-aware diagnostic flag ─────────────────────────────────────────────
+    age = patient.age or 0
+    if 26 <= age <= 30:
+        age_flag = "peak_gap"
+    elif age < 18:
+        age_flag = "adolescent"
+    else:
+        age_flag = ""
+
     # ── Stage 2: comorbidity / differential flags (ALL patients) ────────────────
     tsh = float(X["TSH (mIU/L)"].iloc[0])
     prl = float(X["PRL(ng/mL)"].iloc[0])
@@ -419,6 +429,7 @@ async def diagnose(patient: PatientData):
         primary_diagnosis  = primary,
         pcos_phenotype     = phenotype,
         rotterdam_gap_flag = rotterdam_gap,
+        age_flag           = age_flag,
         differential_flags = diff_flags,
         shap_explanations  = shap_top3,
     )

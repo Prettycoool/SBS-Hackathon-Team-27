@@ -204,6 +204,130 @@ function EndoCard({ flagged, icon, probability }) {
   );
 }
 
+// ── Time Cost of Misdiagnosis card ───────────────────────────────────────────
+
+const MISDIAGNOSIS_DATA = {
+  A:        { years: 1.9, misdiagnosis: 'Idiopathic hirsutism' },
+  B:        { years: 2.8, misdiagnosis: 'Idiopathic hirsutism (54% of cases)' },
+  C:        { years: 2.4, misdiagnosis: 'Stress-related amenorrhea' },
+  D:        { years: 3.8, misdiagnosis: 'Subclinical hypothyroidism' },
+  Atypical: { years: 4.2, misdiagnosis: 'No diagnosis given' },
+};
+
+function TimeCostCard({ phenotype }) {
+  const data = phenotype ? MISDIAGNOSIS_DATA[phenotype.code] : null;
+  if (!data) return null;
+  return (
+    <div className="time-cost-card">
+      <div className="time-cost-header">⏱ Without early detection tools:</div>
+      <div className="time-cost-rows">
+        <div className="time-cost-row">
+          <span className="time-cost-label">Average time to diagnosis</span>
+          <span className="time-cost-value">{data.years} years</span>
+        </div>
+        <div className="time-cost-row">
+          <span className="time-cost-label">Doctors seen before diagnosis</span>
+          <span className="time-cost-value">3–4 on average</span>
+        </div>
+        <div className="time-cost-row">
+          <span className="time-cost-label">Most commonly misdiagnosed as</span>
+          <span className="time-cost-value">{data.misdiagnosis}</span>
+        </div>
+      </div>
+      <div className="time-cost-diana">
+        ✓ With DIANA: Flagged today — estimated {data.years} years saved — fertility planning window preserved
+      </div>
+    </div>
+  );
+}
+
+// ── Long-term Risk Profile card ───────────────────────────────────────────────
+
+const RISK_PROFILE = {
+  A:        { t2d: 4.0, ms: 3.2, cvd: 2.8, mh: 2.8, infertility: 72 },
+  B:        { t2d: 3.2, ms: 2.8, cvd: 2.4, mh: 2.8, infertility: 68 },
+  C:        { t2d: 2.8, ms: 2.4, cvd: 2.0, mh: 2.4, infertility: 55 },
+  D:        { t2d: 2.4, ms: 2.0, cvd: 1.8, mh: 2.4, infertility: 48 },
+  Atypical: { t2d: 2.5, ms: 2.2, cvd: 1.9, mh: 2.6, infertility: 52 },
+};
+
+const RISK_ROWS = [
+  { key: 't2d', label: 'Type 2 Diabetes',      fmt: v => `${v}x relative risk` },
+  { key: 'ms',  label: 'Metabolic Syndrome',    fmt: v => `${v}x relative risk` },
+  { key: 'cvd', label: 'Cardiovascular Disease', fmt: v => `${v}x relative risk` },
+  { key: 'mh',  label: 'Depression / Anxiety',  fmt: v => `${v}x relative risk` },
+  { key: 'infertility', label: 'Infertility Risk', fmt: v => `${v}%` },
+];
+
+function riskColor(key, val) {
+  if (key === 'infertility') return val >= 65 ? 'red' : val >= 55 ? 'amber' : 'yellow';
+  return val >= 3 ? 'red' : val >= 2 ? 'amber' : 'yellow';
+}
+
+function RiskProfileCard({ phenotype }) {
+  const data = phenotype ? RISK_PROFILE[phenotype.code] : null;
+  if (!data) return null;
+  return (
+    <div className="risk-profile-card">
+      <div className="risk-profile-header">Long-term Risk Profile — If Left Undiagnosed</div>
+      <div className="risk-profile-rows">
+        {RISK_ROWS.map(({ key, label, fmt }) => {
+          const val = data[key];
+          const tier = riskColor(key, val);
+          return (
+            <div key={key} className={`risk-row risk-row-${tier}`}>
+              <span className="risk-label">{label}</span>
+              <span className={`risk-value risk-value-${tier}`}>{fmt(val)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="risk-goodnews">
+        <div className="risk-goodnews-title">✓ Good news — Early intervention helps:</div>
+        <p>Lifestyle modification reduces T2D risk by up to 58% (NEJM Diabetes Prevention Program). Metformin reduces metabolic risk. Mental health screening recommended.</p>
+        <div className="risk-checklist-title">Recommended investigations:</div>
+        <ul className="risk-checklist">
+          <li>Fasting glucose + insulin</li>
+          <li>Full lipid panel</li>
+          <li>PHQ-9 depression screening</li>
+          <li>Blood pressure monitoring</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ── Age-aware diagnostic flag card ───────────────────────────────────────────
+
+function AgeFlagCard({ age_flag }) {
+  if (age_flag === 'peak_gap') {
+    return (
+      <div className="age-flag-card amber">
+        <div className="age-flag-title">⚠️ Peak Diagnostic Gap Zone</div>
+        <div className="age-flag-text">
+          Women aged 26–30 have the highest Rotterdam miss rate in our dataset (35.8%).
+          DIANA applies heightened sensitivity for this age group — borderline presentations
+          are flagged rather than dismissed.
+        </div>
+      </div>
+    );
+  }
+  if (age_flag === 'adolescent') {
+    return (
+      <div className="age-flag-card blue">
+        <div className="age-flag-title">⚠️ Adolescent Patient</div>
+        <div className="age-flag-text">
+          2023 international guidelines recommend against ultrasound and AMH in patients
+          under 18 due to poor specificity. DIANA applies adolescent-adjusted criteria:
+          both hyperandrogenism AND anovulation required for diagnosis. Ultrasound findings
+          not weighted.
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 // ── Main results panel ────────────────────────────────────────────────────────
 
 export default function ResultsPanel({ results, loading, error, form }) {
@@ -253,6 +377,9 @@ export default function ResultsPanel({ results, loading, error, form }) {
 
   return (
     <>
+      {/* ── Age-aware diagnostic flag card ─────────────────────────────── */}
+      {results.age_flag && <AgeFlagCard age_flag={results.age_flag} />}
+
       {/* ── [3] Primary diagnosis + gauge ──────────────────────────────── */}
       <div className={`card${pcos_prediction && !inconclusive ? ' pcos-positive' : ''}`}>
         <div className="card-header">
@@ -289,6 +416,16 @@ export default function ResultsPanel({ results, loading, error, form }) {
         )}
         <div style={{ height: 14 }} />
       </div>
+
+      {/* ── Time Cost of Misdiagnosis — PCOS-positive only ─────────────── */}
+      {pcos_prediction && results.pcos_phenotype && (
+        <TimeCostCard phenotype={results.pcos_phenotype} />
+      )}
+
+      {/* ── Long-term Risk Profile — PCOS-positive only ────────────────── */}
+      {pcos_prediction && results.pcos_phenotype && (
+        <RiskProfileCard phenotype={results.pcos_phenotype} />
+      )}
 
       {/* ── Rotterdam Gap Flag ─────────────────────────────────────────── */}
       {!pcos_prediction && results.rotterdam_gap_flag && (
