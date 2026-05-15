@@ -266,6 +266,14 @@ export default function ResultsPanel({ results, loading, error, form }) {
             </div>
             <div className="diag-text">{subText}</div>
           </div>
+
+          {/* Phenotype subtype — PCOS positive only */}
+          {pcos_prediction && results.pcos_phenotype && (
+            <div className="phenotype-row">
+              <span className="phenotype-badge">{results.pcos_phenotype.label}</span>
+              <span className="phenotype-desc">{results.pcos_phenotype.description}</span>
+            </div>
+          )}
         </div>
 
         {/* Gauge */}
@@ -281,6 +289,21 @@ export default function ResultsPanel({ results, loading, error, form }) {
         )}
         <div style={{ height: 14 }} />
       </div>
+
+      {/* ── Rotterdam Gap Flag ─────────────────────────────────────────── */}
+      {!pcos_prediction && results.rotterdam_gap_flag && (
+        <div className="rotterdam-gap-card">
+          <div className="rotterdam-gap-icon">⚠️</div>
+          <div>
+            <div className="rotterdam-gap-title">Atypical PCOS Signals Detected</div>
+            <div className="rotterdam-gap-text">
+              This patient does not meet Rotterdam criteria for PCOS but shows
+              hormonal/metabolic signals consistent with atypical PCOS cases in
+              our dataset. Do not exclude PCOS — recommend full clinical workup.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── [1] Rotterdam criteria tracker ─────────────────────────────── */}
       <RotterdamTracker form={form} />
@@ -303,11 +326,11 @@ export default function ResultsPanel({ results, loading, error, form }) {
         </div>
       </div>
 
-      {/* ── Differential flags (Not-PCOS only) ─────────────────────────── */}
-      {!pcos_prediction && df && (
+      {/* ── Differential / Comorbidity flags (all patients) ───────────── */}
+      {df && (
         <div className="card">
           <div className="card-header">
-            <h2>Differential Diagnosis — Stage 2</h2>
+            <h2>{pcos_prediction ? 'Comorbidity Alerts' : 'Differential Diagnosis — Stage 2'}</h2>
           </div>
           <div className="card-body">
             <div className="flags-grid">
@@ -324,8 +347,9 @@ export default function ResultsPanel({ results, loading, error, form }) {
                 probability={df.endometriosis_probability} />
             </div>
             <p style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 12 }}>
-              Flags indicate values exceeding published clinical thresholds.
-              Results require clinical correlation and are not diagnostic alone.
+              {pcos_prediction
+                ? 'PCOS patients may present with concurrent conditions. Flags indicate values exceeding clinical thresholds.'
+                : 'Flags indicate values exceeding published clinical thresholds. Results require clinical correlation and are not diagnostic alone.'}
             </p>
           </div>
         </div>

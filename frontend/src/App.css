@@ -808,3 +808,63 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 11px;
   color: var(--c-muted);
 }
+
+/* ── Phenotype subtype badge ──────────────────────────────────────────────── */
+.phenotype-row {
+  margin: 0 20px 16px;
+  padding: 10px 14px;
+  background: var(--c-flag-bg);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.phenotype-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-flag);
+  background: rgba(192, 132, 252, 0.15);
+  border: 1px solid rgba(192, 132, 252, 0.30);
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.phenotype-desc {
+  font-size: 12px;
+  color: var(--c-text);
+  opacity: 0.88;
+  line-height: 1.4;
+}
+
+/* ── Rotterdam Gap Flag warning card ──────────────────────────────────────── */
+.rotterdam-gap-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--c-mid-bg);
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.rotterdam-gap-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.rotterdam-gap-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-mid);
+  margin-bottom: 5px;
+}
+.rotterdam-gap-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--c-text);
+  opacity: 0.88;
+}

@@ -171,12 +171,20 @@ class DifferentialFlags(BaseModel):
     sbp_value:                float
 
 
+class PhenotypeInfo(BaseModel):
+    code:        str   # "A", "B", "C", "D", or "Atypical"
+    label:       str   # e.g. "Phenotype A"
+    description: str   # one-line clinical description
+
+
 class DiagnosisResponse(BaseModel):
-    pcos_probability:   float
-    pcos_prediction:    bool
-    primary_diagnosis:  str
-    differential_flags: Optional[DifferentialFlags]
-    shap_explanations:  list[ShapEntry]
+    pcos_probability:    float
+    pcos_prediction:     bool
+    primary_diagnosis:   str
+    pcos_phenotype:      Optional[PhenotypeInfo] = None
+    rotterdam_gap_flag:  bool = False
+    differential_flags:  Optional[DifferentialFlags] = None
+    shap_explanations:   list[ShapEntry]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -297,6 +305,41 @@ def build_endo_features(X: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame([row])[endo_feat_names]
 
 
+def classify_phenotype(
+    irregular_cycle: bool,
+    hyperandrogenism: bool,
+    polycystic_ovaries: bool,
+) -> PhenotypeInfo:
+    """
+    Rotterdam 2003 phenotype classification.
+    Requires ≥2 of 3 criteria for PCOS; returns which combination is present.
+    """
+    if irregular_cycle and hyperandrogenism and polycystic_ovaries:
+        return PhenotypeInfo(
+            code="A", label="Phenotype A",
+            description="Irregular cycle + Hyperandrogenism + Polycystic ovaries",
+        )
+    if irregular_cycle and hyperandrogenism:
+        return PhenotypeInfo(
+            code="B", label="Phenotype B",
+            description="Irregular cycle + Hyperandrogenism (no polycystic ovaries)",
+        )
+    if hyperandrogenism and polycystic_ovaries:
+        return PhenotypeInfo(
+            code="C", label="Phenotype C",
+            description="Hyperandrogenism + Polycystic ovaries (regular cycle)",
+        )
+    if irregular_cycle and polycystic_ovaries:
+        return PhenotypeInfo(
+            code="D", label="Phenotype D",
+            description="Irregular cycle + Polycystic ovaries (no hyperandrogenism)",
+        )
+    return PhenotypeInfo(
+        code="Atypical", label="Atypical Presentation",
+        description="Fewer than 2 Rotterdam criteria met — ML-flagged presentation",
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -325,40 +368,57 @@ async def diagnose(patient: PatientData):
 
     shap_top3 = get_shap_top3(X)
 
-    # ── Stage 2: differential diagnosis (Not-PCOS only) ───────────────────────
-    diff_flags = None
+    # ── Rotterdam criteria (used for both phenotype and gap flag) ─────────────
+    irregular_cycle    = patient.cycle_regular is False
+    hyperandrogenism   = bool(patient.hair_growth or patient.skin_darkening or patient.pimples)
+    polycystic_ovaries = bool(
+        (patient.follicle_no_l or 0) > 12 or
+        (patient.follicle_no_r or 0) > 12
+    )
+    rotterdam_met = sum([irregular_cycle, hyperandrogenism, polycystic_ovaries])
+
+    # ── Phenotype subtyping (PCOS-positive only) ──────────────────────────────
+    phenotype = classify_phenotype(irregular_cycle, hyperandrogenism, polycystic_ovaries) \
+        if pcos_pred else None
+
+    # ── Rotterdam gap flag: Not-PCOS with exactly 1 criterion met ─────────────
+    rotterdam_gap = (not pcos_pred) and (rotterdam_met == 1)
+
+    # ── Stage 2: comorbidity / differential flags (ALL patients) ────────────────
+    tsh = float(X["TSH (mIU/L)"].iloc[0])
+    prl = float(X["PRL(ng/mL)"].iloc[0])
+    sbp = float(X["BP _Systolic (mmHg)"].iloc[0])
+
+    X_endo    = build_endo_features(X)
+    endo_prob = float(endo_model.predict_proba(X_endo)[0, 1])
+
+    # Annotate primary_diagnosis string only for Not-PCOS cases
     if not pcos_pred:
-        tsh = float(X["TSH (mIU/L)"].iloc[0])
-        prl = float(X["PRL(ng/mL)"].iloc[0])
-        sbp = float(X["BP _Systolic (mmHg)"].iloc[0])
-
-        X_endo    = build_endo_features(X)
-        endo_prob = float(endo_model.predict_proba(X_endo)[0, 1])
-
         flags_raised = []
-        if tsh > TSH_THRESHOLD:          flags_raised.append("hypothyroidism")
-        if prl > PRL_THRESHOLD:          flags_raised.append("hyperprolactinemia")
-        if sbp > SBP_THRESHOLD:          flags_raised.append("hypertension / Cushing's")
-        if endo_prob >= ENDO_THRESHOLD:  flags_raised.append(f"endometriosis risk ({endo_prob:.0%})")
-
+        if tsh > TSH_THRESHOLD:         flags_raised.append("hypothyroidism")
+        if prl > PRL_THRESHOLD:         flags_raised.append("hyperprolactinemia")
+        if sbp > SBP_THRESHOLD:         flags_raised.append("hypertension / Cushing's")
+        if endo_prob >= ENDO_THRESHOLD: flags_raised.append(f"endometriosis risk ({endo_prob:.0%})")
         if flags_raised:
             primary += " — flags: " + ", ".join(flags_raised)
 
-        diff_flags = DifferentialFlags(
-            hypothyroidism           = tsh > TSH_THRESHOLD,
-            hyperprolactinemia       = prl > PRL_THRESHOLD,
-            cushings_hypertension    = sbp > SBP_THRESHOLD,
-            endometriosis_risk       = endo_prob >= ENDO_THRESHOLD,
-            endometriosis_probability= round(endo_prob, 3),
-            tsh_value                = round(tsh, 2),
-            prl_value                = round(prl, 2),
-            sbp_value                = round(sbp, 1),
-        )
+    diff_flags = DifferentialFlags(
+        hypothyroidism           = tsh > TSH_THRESHOLD,
+        hyperprolactinemia       = prl > PRL_THRESHOLD,
+        cushings_hypertension    = sbp > SBP_THRESHOLD,
+        endometriosis_risk       = endo_prob >= ENDO_THRESHOLD,
+        endometriosis_probability= round(endo_prob, 3),
+        tsh_value                = round(tsh, 2),
+        prl_value                = round(prl, 2),
+        sbp_value                = round(sbp, 1),
+    )
 
     return DiagnosisResponse(
         pcos_probability   = round(pcos_proba, 4),
         pcos_prediction    = pcos_pred,
         primary_diagnosis  = primary,
+        pcos_phenotype     = phenotype,
+        rotterdam_gap_flag = rotterdam_gap,
         differential_flags = diff_flags,
         shap_explanations  = shap_top3,
     )

@@ -167,6 +167,45 @@ export function generatePDF({ form, results, shapSentence }) {
   doc.setTextColor(...C.dark);
   y += 18;
 
+  // Phenotype subtype row
+  if (pcosDet && results.pcos_phenotype) {
+    guard(12);
+    doc.setFillColor(245, 238, 248);
+    doc.rect(M, y, CW, 10, 'F');
+    doc.setFillColor(...C.purple);
+    doc.rect(M, y, 2.5, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...C.purple);
+    doc.text(results.pcos_phenotype.label, M + 5, y + 4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...C.muted);
+    doc.text(results.pcos_phenotype.description, M + 5, y + 9);
+    doc.setTextColor(...C.dark);
+    y += 14;
+  }
+
+  // Rotterdam gap flag warning
+  if (!pcosDet && results.rotterdam_gap_flag) {
+    guard(22);
+    doc.setFillColor(255, 243, 205);
+    doc.setDrawColor(...C.amber);
+    doc.roundedRect(M, y, CW, 20, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...C.amber);
+    doc.text('⚠  ATYPICAL PCOS SIGNALS DETECTED', M + 4, y + 6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...C.amberDark);
+    const gapMsg = 'Patient does not meet Rotterdam criteria but shows hormonal/metabolic signals consistent with atypical PCOS cases in our dataset. Do not exclude PCOS — recommend full clinical workup.';
+    const gapLines = doc.splitTextToSize(gapMsg, CW - 8);
+    doc.text(gapLines, M + 4, y + 12.5);
+    doc.setTextColor(...C.dark);
+    y += 24;
+  }
+
   // Plain-English summary callout
   if (shapSentence) {
     guard(18);
@@ -300,10 +339,10 @@ export function generatePDF({ form, results, shapSentence }) {
     y += 14;
   });
 
-  // ── 6. STAGE 2 DIFFERENTIAL DIAGNOSIS ────────────────────────────────────────
-  if (!pcosDet && results.differential_flags) {
+  // ── 6. DIFFERENTIAL DIAGNOSIS / COMORBIDITY ALERTS (all patients) ───────────
+  if (results.differential_flags) {
     y += 4;
-    sectionBar('Stage 2 Differential Diagnosis');
+    sectionBar(pcosDet ? 'Comorbidity Alerts' : 'Stage 2 Differential Diagnosis');
 
     const df = results.differential_flags;
     const flags = [
@@ -337,6 +376,19 @@ export function generatePDF({ form, results, shapSentence }) {
       doc.setTextColor(...C.dark);
       y += 6;
     });
+
+    guard(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...C.muted);
+    doc.text(
+      pcosDet
+        ? 'PCOS patients may present with concurrent conditions. Flags indicate values exceeding clinical thresholds.'
+        : 'Flags indicate values exceeding published clinical thresholds. Results require clinical correlation.',
+      M, y,
+    );
+    doc.setTextColor(...C.dark);
+    y += 6;
   }
 
   // ── 7. DISCLAIMER ────────────────────────────────────────────────────────────
