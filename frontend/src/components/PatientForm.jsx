@@ -4,7 +4,7 @@
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 
-function Slider({ name, label, value, onChange, min, max, step, unit, refRange }) {
+function Slider({ name, label, desc, value, onChange, min, max, step, unit, refRange }) {
   const decimals = step < 1 ? 1 : 0;
   const display  = typeof value === 'number' ? value.toFixed(decimals) : value;
   const pct      = `${((value - min) / (max - min)) * 100}%`;
@@ -15,6 +15,7 @@ function Slider({ name, label, value, onChange, min, max, step, unit, refRange }
         <span className="field-label">{label}</span>
         <span className="field-value-badge">{display}{unit}</span>
       </div>
+      {desc && <div className="field-desc">{desc}</div>}
       {refRange && <div className="field-ref">Ref: {refRange}</div>}
       <input
         type="range"
@@ -77,6 +78,7 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
                     sub={form.cycle_regular ? 'Regular' : 'Irregular'}
                     value={form.cycle_regular} onChange={onChange} />
             <Slider name="cycle_length_days" label="Cycle Length"
+                    desc="Average length of the menstrual phase in days (duration of bleeding)"
                     value={form.cycle_length_days} onChange={onChange}
                     min={1} max={15} step={1} unit=" days" refRange="3 – 7 days" />
           </div>

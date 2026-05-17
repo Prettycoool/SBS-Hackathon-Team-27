@@ -398,6 +398,12 @@ body {
   font-weight: 500;
   color: var(--c-text);
 }
+.field-desc {
+  font-size: 11px;
+  color: var(--c-muted);
+  font-style: italic;
+  margin-bottom: 2px;
+}
 .field-ref {
   font-size: 11px;
   color: var(--c-muted);
