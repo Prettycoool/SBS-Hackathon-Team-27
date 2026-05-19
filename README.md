@@ -125,8 +125,8 @@ DIANA is a full-stack clinical decision support interface built with React + Fas
 ### Backend (FastAPI)
 ```bash
 # From project root
-pip install fastapi uvicorn
-python backend/main.py
+pip install -r backend/requirements.txt
+python -m uvicorn backend.main:app --reload --port 8000
 # API runs at http://localhost:8000
 # Docs available at http://localhost:8000/docs
 ```
