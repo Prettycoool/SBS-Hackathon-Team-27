@@ -168,7 +168,7 @@ function RotterdamTracker({ form }) {
 
 // ── Differential flag card ────────────────────────────────────────────────────
 
-function FlagCard({ flagged, icon, label, biomarker, value, unit, threshold }) {
+function FlagCard({ flagged, icon, label, biomarker, value, unit, threshold, note }) {
   return (
     <div className={`flag-card ${flagged ? 'flagged' : 'normal'}`}>
       <div className="flag-top">
@@ -182,11 +182,12 @@ function FlagCard({ flagged, icon, label, biomarker, value, unit, threshold }) {
         {biomarker}: {value !== null ? `${value} ${unit}` : '—'}
       </div>
       <div className="flag-thresh">Threshold: &gt; {threshold} {unit}</div>
+      {note && <div className="flag-note">{note}</div>}
     </div>
   );
 }
 
-function EndoCard({ flagged, icon, probability }) {
+function EndoCard({ flagged, icon, probability, pelvicPainNote }) {
   return (
     <div className={`flag-card ${flagged ? 'flagged' : 'normal'}`}>
       <div className="flag-top">
@@ -200,6 +201,7 @@ function EndoCard({ flagged, icon, probability }) {
         XGBoost probability: {probability !== null ? `${Math.round(probability * 100)}%` : '—'}
       </div>
       <div className="flag-thresh">Threshold: ≥ 50%</div>
+      {pelvicPainNote && <div className="flag-note">{pelvicPainNote}</div>}
     </div>
   );
 }
@@ -476,12 +478,14 @@ export default function ResultsPanel({ results, loading, error, form }) {
                 value={df.tsh_value} unit="mIU/L" threshold="4.0" />
               <FlagCard icon="💊" flagged={df.hyperprolactinemia}
                 label="Hyperprolactinemia" biomarker="PRL"
-                value={df.prl_value} unit="ng/mL" threshold="25" />
+                value={df.prl_value} unit="ng/mL" threshold="25"
+                note={df.galactorrhea_strengthened ? 'Galactorrhea reported — supports hyperprolactinemia diagnosis.' : null} />
               <FlagCard icon="🫀" flagged={df.cushings_hypertension}
                 label="Cushing's / HTN" biomarker="Systolic BP"
                 value={df.sbp_value} unit="mmHg" threshold="140" />
               <EndoCard icon="🌸" flagged={df.endometriosis_risk}
-                probability={df.endometriosis_probability} />
+                probability={df.endometriosis_probability}
+                pelvicPainNote={df.pelvic_pain_note} />
             </div>
             <p style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 12 }}>
               {pcos_prediction

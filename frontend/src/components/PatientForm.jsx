@@ -100,6 +100,8 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
                     min={0.1} max={10} step={0.1} unit=" mIU/L" refRange="0.4 – 4.0 mIU/L" />
             <Slider name="prl_ng_ml"  label="Prolactin (PRL)" value={form.prl_ng_ml} onChange={onChange}
                     min={2} max={100} step={0.5} unit=" ng/mL" refRange="< 25 ng/mL" />
+            <Slider name="progesterone_ng_ml" label="Progesterone" value={form.progesterone_ng_ml} onChange={onChange}
+                    min={0} max={40} step={0.1} unit=" ng/mL" refRange="Luteal: 5 – 20 ng/mL" />
           </div>
         </div>
       </div>
@@ -140,6 +142,14 @@ export default function PatientForm({ form, onChange, onSubmit, loading }) {
                     sub="Scalp / androgenic"     value={form.hair_loss}     onChange={onChange} />
             <Toggle symptom name="pimples"       label="Acne / Pimples"
                     sub="Hormonal pattern"       value={form.pimples}       onChange={onChange} />
+            <Toggle symptom name="galactorrhea"  label="Galactorrhea"
+                    sub="Nipple discharge (non-lactating)" value={form.galactorrhea} onChange={onChange} />
+          </div>
+          <div className="form-grid" style={{ marginTop: 8 }}>
+            <Slider name="chronic_pelvic_pain" label="Chronic Pelvic Pain"
+                    desc="Key endometriosis differentiator — typically absent in PCOS"
+                    value={form.chronic_pelvic_pain} onChange={onChange}
+                    min={0} max={10} step={1} unit="" refRange="0 = none, 10 = severe" />
           </div>
         </div>
       </div>

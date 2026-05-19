@@ -55,7 +55,101 @@ function SectionProgress({ activeSection, onNavigate }) {
   );
 }
 
-const API_URL = 'http://localhost:8000/diagnose';
+const API_URL       = 'http://localhost:8000/diagnose';
+const PARSE_NOTE_URL = 'http://localhost:8000/parse-note';
+
+// Maps /parse-note response keys → form field names + optional coercion
+const OCR_FIELD_MAP = {
+  age:                 { key: 'age',               coerce: Number },
+  bmi:                 { key: 'bmi',               coerce: Number },
+  bp_systolic:         { key: 'bp_systolic',        coerce: v => Math.round(Number(v)) },
+  bp_diastolic:        { key: 'bp_diastolic',       coerce: v => Math.round(Number(v)) },
+  fsh:                 { key: 'fsh_miu_ml',         coerce: Number },
+  lh:                  { key: 'lh_miu_ml',          coerce: Number },
+  amh:                 { key: 'amh_ng_ml',          coerce: Number },
+  tsh:                 { key: 'tsh_miu_l',          coerce: Number },
+  prolactin:           { key: 'prl_ng_ml',          coerce: Number },
+  progesterone:        { key: 'progesterone_ng_ml', coerce: Number },
+  cycle_regular:       { key: 'cycle_regular',      coerce: v => Boolean(v) },
+  cycle_length:        { key: 'cycle_length_days',  coerce: v => Math.max(1, Math.min(15, Math.round(Number(v)))) },
+  follicle_no_l:       { key: 'follicle_no_l',      coerce: v => Math.round(Number(v)) },
+  follicle_no_r:       { key: 'follicle_no_r',      coerce: v => Math.round(Number(v)) },
+  avg_f_size_l:        { key: 'avg_f_size_l_mm',    coerce: Number },
+  avg_f_size_r:        { key: 'avg_f_size_r_mm',    coerce: Number },
+  weight_gain:         { key: 'weight_gain',        coerce: v => Boolean(v) },
+  hair_growth:         { key: 'hair_growth',        coerce: v => Boolean(v) },
+  skin_darkening:      { key: 'skin_darkening',     coerce: v => Boolean(v) },
+  hair_loss:           { key: 'hair_loss',          coerce: v => Boolean(v) },
+  pimples:             { key: 'pimples',            coerce: v => Boolean(v) },
+  galactorrhea:        { key: 'galactorrhea',       coerce: v => Boolean(v) },
+  chronic_pelvic_pain: { key: 'chronic_pelvic_pain', coerce: v => Math.max(0, Math.min(10, Math.round(Number(v)))) },
+};
+
+function DoctorsNotePanel({ onExtracted }) {
+  const [note,       setNote]       = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [error,      setError]      = useState(null);
+
+  const handleExtract = async () => {
+    if (!note.trim()) return;
+    setExtracting(true);
+    setError(null);
+    try {
+      const res = await fetch(PARSE_NOTE_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ note }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail ?? `Server returned ${res.status}`);
+      }
+      const parsed = await res.json();
+      const updates = {};
+      for (const [ocrKey, { key, coerce }] of Object.entries(OCR_FIELD_MAP)) {
+        const val = parsed[ocrKey];
+        if (val !== null && val !== undefined) {
+          updates[key] = coerce(val);
+        }
+      }
+      onExtracted(updates);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  return (
+    <div className="note-panel card">
+      <div className="card-header"><h2>Paste Doctor's Note</h2></div>
+      <div className="card-body">
+        <p className="note-hint">
+          Paste or type a clinical note. DIANA will extract all recognisable
+          values and pre-fill the form — you can review and adjust before running
+          the diagnostic.
+        </p>
+        <textarea
+          className="note-textarea"
+          placeholder="e.g. 28-year-old female. BMI 27.4. LH 12.3 mIU/mL, FSH 5.1 mIU/mL. Irregular cycle. Hirsutism noted. TSH 2.1 mIU/L. Follicles L: 14, R: 16..."
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={10}
+        />
+        {error && <div className="note-error">{error}</div>}
+        <button
+          className="btn-extract"
+          onClick={handleExtract}
+          disabled={extracting || !note.trim()}
+        >
+          {extracting
+            ? <><span className="spinner-inline" /> Extracting…</>
+            : 'Extract & Fill Form'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Default form values match the training dataset population medians,
 // so the slider positions represent a "typical" patient at startup.
@@ -68,7 +162,8 @@ const DEFAULTS = {
   lh_miu_ml:        2.3,
   amh_ng_ml:        3.7,
   tsh_miu_l:        2.3,
-  prl_ng_ml:        21.9,
+  prl_ng_ml:          21.9,
+  progesterone_ng_ml: 8.0,
   follicle_no_l:    5,
   follicle_no_r:    6,
   avg_f_size_l_mm:  15.0,
@@ -77,21 +172,25 @@ const DEFAULTS = {
   hair_growth:      false,
   skin_darkening:   false,
   hair_loss:        false,
-  pimples:          false,
+  pimples:             false,
+  galactorrhea:        false,
+  chronic_pelvic_pain: 0,
   bp_systolic:      110,
   bp_diastolic:     80,
 };
 
 export default function App() {
-  const [form,          setForm]          = useState(DEFAULTS);
-  const [results,       setResults]       = useState(null);
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState(null);
-  const [activeSection, setActiveSection] = useState('section-demographics');
-  const [isDark,        setIsDark]        = useState(
+  const [form,           setForm]          = useState(DEFAULTS);
+  const [results,        setResults]       = useState(null);
+  const [loading,        setLoading]       = useState(false);
+  const [error,          setError]         = useState(null);
+  const [activeSection,  setActiveSection] = useState('section-demographics');
+  const [isDark,         setIsDark]        = useState(
     () => localStorage.getItem(THEME_KEY) !== 'light'
   );
-  const [iconFlipping,  setIconFlipping]  = useState(false);
+  const [iconFlipping,   setIconFlipping]  = useState(false);
+  const [inputMode,      setInputMode]     = useState('manual'); // 'manual' | 'note'
+  const [extractedCount, setExtractedCount] = useState(0);
   const resultsRef      = useRef(null);
   const isScrollingRef  = useRef(false);
 
@@ -143,6 +242,12 @@ export default function App() {
 
   const handleChange = (name, value) => {
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleExtracted = (updates) => {
+    setForm(prev => ({ ...prev, ...updates }));
+    setExtractedCount(Object.keys(updates).length);
+    setInputMode('manual');
   };
 
   const handleSubmit = async () => {
@@ -200,18 +305,47 @@ export default function App() {
         ⚠ For research and educational use only. Not a substitute for clinical diagnosis by a qualified physician.
       </div>
 
-      {/* Section progress */}
-      <SectionProgress activeSection={activeSection} onNavigate={navigateToSection} />
+      {/* Section progress — hidden in note mode */}
+      {inputMode === 'manual' && (
+        <SectionProgress activeSection={activeSection} onNavigate={navigateToSection} />
+      )}
 
       {/* Two-panel layout */}
       <main className="app-body">
         <div>
-          <PatientForm
-            form={form}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            loading={loading}
-          />
+          {/* Input mode tabs */}
+          <div className="input-mode-tabs">
+            <button
+              className={`input-tab ${inputMode === 'manual' ? 'active' : ''}`}
+              onClick={() => setInputMode('manual')}
+            >
+              Manual Entry
+            </button>
+            <button
+              className={`input-tab ${inputMode === 'note' ? 'active' : ''}`}
+              onClick={() => { setInputMode('note'); setExtractedCount(0); }}
+            >
+              Paste Doctor's Note
+            </button>
+          </div>
+
+          {/* Auto-fill success banner */}
+          {extractedCount > 0 && inputMode === 'manual' && (
+            <div className="note-success-banner">
+              {extractedCount} field{extractedCount !== 1 ? 's' : ''} auto-filled
+              from doctor's note — review and adjust as needed.
+            </div>
+          )}
+
+          {inputMode === 'note'
+            ? <DoctorsNotePanel onExtracted={handleExtracted} />
+            : <PatientForm
+                form={form}
+                onChange={handleChange}
+                onSubmit={handleSubmit}
+                loading={loading}
+              />
+          }
         </div>
 
         <div className="results-panel" ref={resultsRef}>

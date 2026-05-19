@@ -38,7 +38,8 @@ const FORM_META = [
   { key: 'lh_miu_ml',         label: 'LH',                     unit: ' mIU/mL' },
   { key: 'amh_ng_ml',         label: 'AMH',                    unit: ' ng/mL'  },
   { key: 'tsh_miu_l',         label: 'TSH',                    unit: ' mIU/L'  },
-  { key: 'prl_ng_ml',         label: 'Prolactin (PRL)',         unit: ' ng/mL'  },
+  { key: 'prl_ng_ml',          label: 'Prolactin (PRL)',         unit: ' ng/mL'  },
+  { key: 'progesterone_ng_ml', label: 'Progesterone',            unit: ' ng/mL'  },
   { key: 'follicle_no_l',     label: 'Follicles (L)',          unit: ''        },
   { key: 'follicle_no_r',     label: 'Follicles (R)',          unit: ''        },
   { key: 'avg_f_size_l_mm',   label: 'Avg Follicle Size (L)',  unit: ' mm'     },
@@ -49,7 +50,9 @@ const FORM_META = [
   { key: 'hair_growth',       label: 'Excessive Hair Growth',  fmt: v => v ? 'Yes' : 'No' },
   { key: 'skin_darkening',    label: 'Skin Darkening',         fmt: v => v ? 'Yes' : 'No' },
   { key: 'hair_loss',         label: 'Hair Loss',              fmt: v => v ? 'Yes' : 'No' },
-  { key: 'pimples',           label: 'Acne / Pimples',         fmt: v => v ? 'Yes' : 'No' },
+  { key: 'pimples',            label: 'Acne / Pimples',         fmt: v => v ? 'Yes' : 'No' },
+  { key: 'galactorrhea',       label: 'Galactorrhea',            fmt: v => v ? 'Yes' : 'No' },
+  { key: 'chronic_pelvic_pain', label: 'Chronic Pelvic Pain',   unit: ' / 10'   },
 ];
 
 function fmtVal(key, rawVal, meta) {
@@ -535,10 +538,10 @@ export function generatePDF({ form, results, shapSentence }) {
 
     const df = results.differential_flags;
     const flags = [
-      { label: 'Hypothyroidism',     flagged: df.hypothyroidism,         bio: 'TSH',        val: df.tsh_value,                unit: 'mIU/L', thresh: '> 4.0 mIU/L'  },
-      { label: 'Hyperprolactinemia', flagged: df.hyperprolactinemia,      bio: 'PRL',        val: df.prl_value,                unit: 'ng/mL', thresh: '> 25 ng/mL'    },
-      { label: "Cushing's / HTN",    flagged: df.cushings_hypertension,   bio: 'Systolic BP',val: df.sbp_value,                unit: 'mmHg',  thresh: '> 140 mmHg'    },
-      { label: 'Endometriosis Risk', flagged: df.endometriosis_risk,      bio: 'XGBoost p',  val: df.endometriosis_probability !== null ? `${Math.round(df.endometriosis_probability * 100)}%` : '—', unit: '', thresh: '>= 50%' },
+      { label: 'Hypothyroidism',     flagged: df.hypothyroidism,         bio: 'TSH',        val: df.tsh_value,                unit: 'mIU/L', thresh: '> 4.0 mIU/L',  note: '' },
+      { label: 'Hyperprolactinemia', flagged: df.hyperprolactinemia,      bio: 'PRL',        val: df.prl_value,                unit: 'ng/mL', thresh: '> 25 ng/mL',    note: df.galactorrhea_strengthened ? 'Galactorrhea reported — supports hyperprolactinemia diagnosis.' : '' },
+      { label: "Cushing's / HTN",    flagged: df.cushings_hypertension,   bio: 'Systolic BP',val: df.sbp_value,                unit: 'mmHg',  thresh: '> 140 mmHg',    note: '' },
+      { label: 'Endometriosis Risk', flagged: df.endometriosis_risk,      bio: 'XGBoost p',  val: df.endometriosis_probability !== null ? `${Math.round(df.endometriosis_probability * 100)}%` : '—', unit: '', thresh: '>= 50%', note: df.pelvic_pain_note || '' },
     ];
 
     flags.forEach(f => {
@@ -564,6 +567,21 @@ export function generatePDF({ form, results, shapSentence }) {
       doc.text(bioLine, M + 4, y);
       doc.setTextColor(...C.dark);
       y += 6;
+
+      if (f.note) {
+        guard(7);
+        doc.setFillColor(255, 251, 235);
+        doc.rect(M, y, CW, 6, 'F');
+        doc.setFillColor(245, 158, 11);
+        doc.rect(M, y, 2, 6, 'F');
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.setTextColor(146, 64, 14);
+        const noteLines = doc.splitTextToSize(f.note, CW - 10);
+        doc.text(noteLines, M + 5, y + 4.2);
+        doc.setTextColor(...C.dark);
+        y += 7;
+      }
     });
 
     guard(8);

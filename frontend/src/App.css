@@ -777,6 +777,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .flag-biomarker { font-size: 11px; color: var(--c-muted); }
 .flag-thresh    { font-size: 10px; color: var(--c-muted); font-style: italic; }
+.flag-note      { font-size: 10.5px; color: #92400e; background: #fffbeb; border-left: 3px solid #f59e0b; padding: 4px 6px; margin-top: 6px; border-radius: 2px; line-height: 1.4; }
 
 /* ── PCOS positive — pulsing border ──────────────────────────────────────── */
 @keyframes pcos-border-pulse {
@@ -1019,4 +1020,121 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 11.5px;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.8;
+}
+
+/* ── Input mode tabs (Manual / Doctor's Note) ─────────────────────────────── */
+.input-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.input-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.input-tab:hover {
+  border-color: var(--c-primary);
+  color: var(--c-text);
+}
+.input-tab.active {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ── Doctor's Note panel ──────────────────────────────────────────────────── */
+.note-hint {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.note-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.note-textarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+.note-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #b91c1c;
+}
+.btn-extract {
+  margin-top: 12px;
+  width: 100%;
+  padding: 11px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--c-teal, #0d8080);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s;
+}
+.btn-extract:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-extract:not(:disabled):hover { opacity: 0.88; }
+.spinner-inline {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Auto-fill success banner ─────────────────────────────────────────────── */
+.note-success-banner {
+  padding: 9px 14px;
+  margin-bottom: 10px;
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #166534;
+}
+[data-theme="dark"] .note-success-banner {
+  background: #052e16;
+  color: #4ade80;
+}
+[data-theme="dark"] .note-error {
+  background: #2d1111;
+  color: #f87171;
 }

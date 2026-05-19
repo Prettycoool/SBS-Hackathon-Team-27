@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Environment files — never commit secrets
+.env
+.env.*
+backend/.env
+
 # macOS
 .DS_Store
 
