@@ -528,3 +528,4 @@ async def parse_note(req: NoteRequest):
             raise HTTPException(500, detail="Model returned a non-JSON response.")
 
     return result
+
